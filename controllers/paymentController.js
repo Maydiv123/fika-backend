@@ -4,8 +4,8 @@ const db = require('../config/db');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
-  key_id: 'rzp_test_2LKLmubQ5uu0M4',
-  key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE'
 });
 
 const paymentController = {
