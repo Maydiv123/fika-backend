@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 
 // Get all users
 const getAllUsers = (req, res) => {
-    const query = 'SELECT id, firstName, lastName, email, gender, dateOfBirth, contactNumber, created_at FROM users';
+    const query = 'SELECT * FROM users';
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching users:', err);
