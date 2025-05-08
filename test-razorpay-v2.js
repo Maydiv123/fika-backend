@@ -3,8 +3,8 @@ require('dotenv').config();
 
 // Initialize Razorpay with environment variables
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE'
+  key_id: 'rzp_test_2LKLmubQ5uu0M4',
+  key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
 });
 
 // Test API key validation
