@@ -2,104 +2,67 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 require('dotenv').config();
 
-// Initialize Razorpay with explicit configuration
+// Test keys - Replace these with your actual test keys from Razorpay Dashboard
+const TEST_KEY_ID = 'rzp_test_2LKLmubQ5uu0M4';
+const TEST_KEY_SECRET = 'r3WxUOnCSmWAedhkRKHaXApE';
+
+// Initialize Razorpay
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE'
+  key_id: TEST_KEY_ID,
+  key_secret: TEST_KEY_SECRET
 });
 
 const paymentController = {
     // Get Razorpay Key
     getRazorpayKey: (req, res) => {
         res.json({
-            key: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4'
+            key: TEST_KEY_ID
         });
     },
 
     // Create Order
     createOrder: async (req, res) => {
         try {
-            // Log the incoming request
             console.log('Create Order Request Body:', req.body);
-            console.log('Create Order Headers:', req.headers);
-
+            
             const { amount, currency = "INR" } = req.body;
             
-            // Validate amount
-            if (!amount) {
-                console.error('Amount is missing in request');
+            if (!amount || isNaN(amount) || amount <= 0) {
                 return res.status(400).json({ 
-                    error: 'Amount is required',
-                    receivedBody: req.body 
-                });
-            }
-
-            if (isNaN(amount) || amount <= 0) {
-                console.error('Invalid amount:', amount);
-                return res.status(400).json({ 
-                    error: 'Invalid amount. Must be a positive number',
+                    error: 'Invalid amount',
                     receivedAmount: amount 
                 });
             }
 
-            // Ensure amount is in paise (multiply by 100 if not already)
-            const amountInPaise = amount < 100 ? amount * 100 : amount;
-
             const options = {
-                amount: amountInPaise,
-                currency: currency,
-                receipt: `receipt_${Date.now()}`,
-                notes: {
-                    description: "Test Order"
-                }
+                amount: amount,
+                currency: currency
             };
 
-            console.log('Creating Razorpay order with options:', options);
-            console.log('Using Razorpay key:', process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4');
+            console.log('Creating order with options:', options);
 
-            try {
-                // Create order using promises
-                const order = await new Promise((resolve, reject) => {
-                    razorpay.orders.create(options, (err, order) => {
-                        if (err) {
-                            console.error('Razorpay order creation error:', err);
-                            reject(err);
-                        } else {
-                            resolve(order);
-                        }
+            // Create order using callback
+            razorpay.orders.create(options, (err, order) => {
+                if (err) {
+                    console.error('Razorpay order creation error:', {
+                        error: err.error,
+                        description: err.error?.description,
+                        code: err.error?.code
                     });
-                });
-
+                    return res.status(500).json({
+                        error: 'Razorpay API Error',
+                        details: err.error?.description || 'Error creating order',
+                        code: err.error?.code
+                    });
+                }
                 console.log('Order created successfully:', order);
                 res.json(order);
-            } catch (razorpayError) {
-                console.error('Razorpay API Error:', {
-                    message: razorpayError.message,
-                    error: razorpayError.error,
-                    statusCode: razorpayError.statusCode,
-                    details: razorpayError.error?.description,
-                    stack: razorpayError.stack
-                });
-                res.status(500).json({ 
-                    error: 'Razorpay API Error',
-                    details: razorpayError.error?.description || razorpayError.message,
-                    statusCode: razorpayError.statusCode,
-                    debug: {
-                        message: razorpayError.message,
-                        error: razorpayError.error
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('Unexpected error in createOrder:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
             });
+        } catch (error) {
+            console.error('Unexpected error:', error);
             res.status(500).json({ 
-                error: 'Error creating order',
-                details: error.message,
-                type: error.name
+                error: 'Server Error',
+                details: error.message
             });
         }
     },
@@ -107,8 +70,6 @@ const paymentController = {
     // Verify Payment
     verifyPayment: (req, res) => {
         try {
-            console.log('Verify Payment Request Body:', req.body);
-            
             const {
                 razorpay_order_id,
                 razorpay_payment_id,
@@ -117,30 +78,25 @@ const paymentController = {
 
             if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
                 return res.status(400).json({
-                    error: 'Missing required payment verification fields',
-                    receivedBody: req.body
+                    error: 'Missing required payment verification fields'
                 });
             }
 
             const sign = razorpay_order_id + "|" + razorpay_payment_id;
             const expectedSign = crypto
-                .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE')
+                .createHmac("sha256", TEST_KEY_SECRET)
                 .update(sign)
                 .digest("hex");
 
             if (razorpay_signature === expectedSign) {
-                console.log('Payment verified successfully');
                 res.json({
                     success: true,
                     message: "Payment verified successfully"
                 });
             } else {
-                console.error('Invalid signature');
                 res.status(400).json({
                     success: false,
-                    message: "Invalid signature",
-                    receivedSignature: razorpay_signature,
-                    expectedSignature: expectedSign
+                    message: "Invalid signature"
                 });
             }
         } catch (error) {
