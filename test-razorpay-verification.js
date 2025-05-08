@@ -8,7 +8,6 @@ const razorpay = new Razorpay({
   key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
 });
 
-
 // Sanitize helper: remove non-ASCII, enforce max length
 const sanitize = (str = '', maxLen = 256) =>
   String(str)
@@ -20,10 +19,34 @@ const sanitize = (str = '', maxLen = 256) =>
 // Universal error logger with context, HTTP status, Razorpay-Request-Id, and stack
 const logError = (context, err) => {
   console.error(`❌ [${context}] Message:`, err.message);
-  if (err.error) console.error(`   ↳ API Error:`, err.error);
+  if (err.error) {
+    console.error(`   ↳ API Error Code:`, err.error.code);
+    console.error(`   ↳ API Error Description:`, err.error.description);
+    console.error(`   ↳ API Error Reason:`, err.error.reason);
+    console.error(`   ↳ API Error Source:`, err.error.source);
+  }
   if (err.statusCode) console.error(`   ↳ HTTP Status Code:`, err.statusCode);
   if (err.requestId) console.error(`   ↳ Razorpay-Request-Id:`, err.requestId);
   console.error(`   ↳ Stack Trace:`, err.stack);
+};
+
+// Retry helper function with exponential backoff
+const retryOperation = async (operation, maxRetries = 3, initialDelay = 2000) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (err) {
+      const delay = initialDelay * Math.pow(2, i); // Exponential backoff
+      if (err.error?.code === 'SERVER_ERROR' && i < maxRetries - 1) {
+        console.log(`\n⚠️ Attempt ${i + 1} failed with server error:`);
+        console.log(`   ↳ Error: ${err.error.description}`);
+        console.log(`   ↳ Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
 };
 
 // Debug: Config details
@@ -42,7 +65,7 @@ const testApiKey = async () => {
     const from = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     const to = new Date().toISOString().split('T')[0];
     console.log(`Fetching payments from ${from} to ${to}...`);
-    const response = await razorpay.payments.all({ from, to });
+    const response = await retryOperation(() => razorpay.payments.all({ from, to }));
     console.log('✅ API Key valid, payments fetched:', response.items.length);
     return true;
   } catch (err) {
@@ -67,7 +90,7 @@ const testOrderCreation = async () => {
     const idempotencyKey = `order_${Date.now()}`;
     console.log('Idempotency-Key:', idempotencyKey);
 
-    const order = await razorpay.orders.create(options);
+    const order = await retryOperation(() => razorpay.orders.create(options));
     console.log('✅ Order created:', order.id);
     console.log('Full Order Response:', order);
     return order;
@@ -89,7 +112,7 @@ const testPaymentVerification = async () => {
       notes: { description: sanitize('Test Order for Verification', 256) }
     };
     console.log('Creating test order with options:', orderOptions);
-    const order = await razorpay.orders.create(orderOptions);
+    const order = await retryOperation(() => razorpay.orders.create(orderOptions));
     console.log('✅ Test order created:', order.id);
 
     // 3.2 Simulate payment
@@ -128,7 +151,11 @@ const runTests = async () => {
 
   const apiOk = await testApiKey();
   if (!apiOk) {
-    console.warn('❌ Invalid API key; aborting further tests');
+    console.warn('\n❌ Aborting further tests due to invalid API key or server issues.');
+    console.warn('Please check:');
+    console.warn('1. Razorpay server status');
+    console.warn('2. API key validity');
+    console.warn('3. Network connectivity');
     return;
   }
 
