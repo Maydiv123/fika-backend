@@ -1,84 +1,141 @@
+// Initialize Razorpay SDK and Crypto
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-require('dotenv').config();
 
-// Initialize Razorpay with environment variables
+// Hardcoded Test Credentials
 const razorpay = new Razorpay({
   key_id: 'rzp_test_2LKLmubQ5uu0M4',
   key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
 });
 
-// Test payment verification
-const testPaymentVerification = async () => {
-  console.log('\n=== Testing Payment Verification ===');
-  
+
+// Sanitize helper: remove non-ASCII, enforce max length
+const sanitize = (str = '', maxLen = 256) =>
+  String(str)
+    // remove non-ASCII characters
+    .replace(/[^\x00-\x7F]/g, '')
+    // enforce max length
+    .slice(0, maxLen);
+
+// Universal error logger with context, HTTP status, Razorpay-Request-Id, and stack
+const logError = (context, err) => {
+  console.error(`❌ [${context}] Message:`, err.message);
+  if (err.error) console.error(`   ↳ API Error:`, err.error);
+  if (err.statusCode) console.error(`   ↳ HTTP Status Code:`, err.statusCode);
+  if (err.requestId) console.error(`   ↳ Razorpay-Request-Id:`, err.requestId);
+  console.error(`   ↳ Stack Trace:`, err.stack);
+};
+
+// Debug: Config details
+const testRazorpayConfig = () => {
+  console.log('--- Razorpay Config ---');
+  console.log('Key ID:', razorpay.key_id);
+  console.log('Key Secret:', '*** (hardcoded)');
+  console.log('Library Version:', razorpay.version || 'unknown');
+  console.log('-----------------------');
+};
+
+// 1. API Key Validation
+const testApiKey = async () => {
+  console.log('\n=== Testing API Key Validation ===');
   try {
-    // First create a test order
-    const orderOptions = {
-      amount: 50000,  // ₹500 in paise
-      currency: "INR",
-      receipt: `receipt_${Date.now()}`,
-      notes: {
-        description: "Test Order for Verification"
-      }
-    };
-
-    console.log('Creating test order...');
-    const order = await razorpay.orders.create(orderOptions);
-    console.log('✅ Test order created:', order.id);
-
-    // Simulate payment verification
-    const paymentId = 'pay_test_' + Date.now();
-    const orderId = order.id;
-    
-    // Generate signature as per documentation
-    const sign = orderId + "|" + paymentId;
-    const signature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE')
-      .update(sign)
-      .digest("hex");
-
-    // Verify signature
-    const expectedSign = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE')
-      .update(sign)
-      .digest("hex");
-
-    console.log('\nVerification Details:');
-    console.log('Order ID:', orderId);
-    console.log('Payment ID:', paymentId);
-    console.log('Generated Signature:', signature);
-    console.log('Expected Signature:', expectedSign);
-
-    if (signature === expectedSign) {
-      console.log('✅ Payment verification successful');
-      return true;
-    } else {
-      console.log('❌ Payment verification failed');
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Error in payment verification test:', {
-      error: error.error,
-      description: error.error?.description,
-      code: error.error?.code,
-      message: error.message
-    });
+    const from = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const to = new Date().toISOString().split('T')[0];
+    console.log(`Fetching payments from ${from} to ${to}...`);
+    const response = await razorpay.payments.all({ from, to });
+    console.log('✅ API Key valid, payments fetched:', response.items.length);
+    return true;
+  } catch (err) {
+    logError('API Key Validation', err);
     return false;
   }
 };
 
-// Test Razorpay instance configuration
-const testRazorpayConfig = () => {
-  console.log('\n=== Testing Razorpay Configuration ===');
-  console.log('Key ID:', razorpay.key_id);
-  console.log('API Version:', razorpay.version);
-  console.log('Headers:', razorpay.headers);
+// 2. Order Creation with detailed debug logs
+const testOrderCreation = async () => {
+  console.log('\n=== Testing Order Creation ===');
+  try {
+    const rawReceipt = `receipt_${Date.now()}`;
+    const rawNote = 'Test Order – verify 🚀';
+
+    const receipt = sanitize(rawReceipt, 40);
+    const description = sanitize(rawNote, 256);
+
+    const options = { amount: 50000, currency: 'INR', receipt, notes: { description } };
+    console.log('Order payload:', options);
+
+    const idempotencyKey = `order_${Date.now()}`;
+    console.log('Idempotency-Key:', idempotencyKey);
+
+    const order = await razorpay.orders.create(options, { headers: { 'Idempotency-Key': idempotencyKey } });
+    console.log('✅ Order created:', order.id);
+    console.log('Full Order Response:', order);
+    return order;
+  } catch (err) {
+    logError('Order Creation', err);
+    return null;
+  }
 };
 
-// Run verification test
-console.log('Starting Payment Verification Test...');
-testRazorpayConfig();
-testPaymentVerification().catch(error => {
-  console.error('Test execution failed:', error);
-}); 
+// 3. Payment Verification with detailed logs
+const testPaymentVerification = async () => {
+  console.log('\n=== Testing Payment Verification ===');
+  try {
+    // 3.1 Create test order
+    const orderOptions = {
+      amount: 50000,
+      currency: 'INR',
+      receipt: sanitize(`receipt_${Date.now()}`, 40),
+      notes: { description: sanitize('Test Order for Verification', 256) }
+    };
+    console.log('Creating test order with options:', orderOptions);
+    const order = await razorpay.orders.create(orderOptions, { headers: { 'Idempotency-Key': `verify_${Date.now()}` } });
+    console.log('✅ Test order created:', order.id);
+
+    // 3.2 Simulate payment
+    const paymentId = `pay_${Date.now()}`;
+    console.log('Simulated Payment ID:', paymentId);
+    const signInput = `${order.id}|${paymentId}`;
+    console.log('Signature Input String:', signInput);
+
+    // 3.3 Generate & verify signature
+    const hmac = crypto.createHmac('sha256', razorpay.key_secret);
+    const generatedSig = hmac.update(signInput).digest('hex');
+    console.log('Generated Signature:', generatedSig);
+
+    // Recompute to compare
+    const verifyHmac = crypto.createHmac('sha256', razorpay.key_secret);
+    const expectedSig = verifyHmac.update(signInput).digest('hex');
+    console.log('Expected Signature:', expectedSig);
+
+    if (generatedSig === expectedSig) {
+      console.log('✅ Signature verification successful');
+      return true;
+    } else {
+      console.log('❌ Signature mismatch');
+      return false;
+    }
+  } catch (err) {
+    logError('Payment Verification', err);
+    return false;
+  }
+};
+
+// Runner
+const runTests = async () => {
+  console.log('Starting Razorpay Integration Debug Tests...');
+  testRazorpayConfig();
+
+  const apiOk = await testApiKey();
+  if (!apiOk) {
+    console.warn('❌ Invalid API key; aborting further tests');
+    return;
+  }
+
+  await testOrderCreation();
+  await testPaymentVerification();
+
+  console.log('\n=== Debug Test Run Complete ===');
+};
+
+runTests().catch(err => logError('Runner', err));
