@@ -1,17 +1,18 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+require('dotenv').config();
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
-  key_id: 'rzp_test_2LKLmubQ5uu0M4',
-  key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE'
 });
 
 const paymentController = {
     // Get Razorpay Key
     getRazorpayKey: (req, res) => {
         res.json({
-            key: 'rzp_test_2LKLmubQ5uu0M4'
+            key: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4'
         });
     },
 
@@ -48,6 +49,7 @@ const paymentController = {
             };
 
             console.log('Creating Razorpay order with options:', options);
+            console.log('Using Razorpay key:', process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4');
 
             try {
                 const order = await razorpay.orders.create(options);
@@ -57,11 +59,12 @@ const paymentController = {
                 console.error('Razorpay API Error:', {
                     message: razorpayError.message,
                     error: razorpayError.error,
-                    statusCode: razorpayError.statusCode
+                    statusCode: razorpayError.statusCode,
+                    details: razorpayError.error?.description
                 });
                 res.status(500).json({ 
                     error: 'Razorpay API Error',
-                    details: razorpayError.message,
+                    details: razorpayError.error?.description || razorpayError.message,
                     statusCode: razorpayError.statusCode
                 });
             }
@@ -99,7 +102,7 @@ const paymentController = {
 
             const sign = razorpay_order_id + "|" + razorpay_payment_id;
             const expectedSign = crypto
-                .createHmac("sha256", 'r3WxUOnCSmWAedhkRKHaXApE')
+                .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE')
                 .update(sign)
                 .digest("hex");
 
