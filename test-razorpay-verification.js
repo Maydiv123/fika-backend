@@ -67,7 +67,7 @@ const testOrderCreation = async () => {
     const idempotencyKey = `order_${Date.now()}`;
     console.log('Idempotency-Key:', idempotencyKey);
 
-    const order = await razorpay.orders.create(options, { headers: { 'Idempotency-Key': idempotencyKey } });
+    const order = await razorpay.orders.create(options);
     console.log('✅ Order created:', order.id);
     console.log('Full Order Response:', order);
     return order;
@@ -89,7 +89,7 @@ const testPaymentVerification = async () => {
       notes: { description: sanitize('Test Order for Verification', 256) }
     };
     console.log('Creating test order with options:', orderOptions);
-    const order = await razorpay.orders.create(orderOptions, { headers: { 'Idempotency-Key': `verify_${Date.now()}` } });
+    const order = await razorpay.orders.create(orderOptions);
     console.log('✅ Test order created:', order.id);
 
     // 3.2 Simulate payment

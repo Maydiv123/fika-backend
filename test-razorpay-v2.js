@@ -7,6 +7,15 @@ const razorpay = new Razorpay({
   key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
 });
 
+// Universal error logger with context
+const logError = (context, err) => {
+  console.error(`❌ [${context}] Message:`, err.message);
+  if (err.error) console.error(`   ↳ API Error:`, err.error);
+  if (err.statusCode) console.error(`   ↳ HTTP Status Code:`, err.statusCode);
+  if (err.requestId) console.error(`   ↳ Razorpay-Request-Id:`, err.requestId);
+  console.error(`   ↳ Stack Trace:`, err.stack);
+};
+
 // Helper to sanitize strings
 const sanitize = (str = '', maxLen = 256) =>
   String(str)
@@ -64,10 +73,7 @@ const testOrderCreation = async () => {
     const idempotencyKey = `order_${Date.now()}`;
     console.log('Idempotency-Key:', idempotencyKey);
 
-    const order = await razorpay.orders.create(options, {
-      headers: { 'Idempotency-Key': idempotencyKey }
-    });
-
+    const order = await razorpay.orders.create(options);
     console.log('✅ Order created:', order.id);
     console.log('Full Order Response:', order);
     return order;
