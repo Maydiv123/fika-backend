@@ -2,7 +2,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 require('dotenv').config();
 
-// Initialize Razorpay
+// Initialize Razorpay with explicit configuration
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4',
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'r3WxUOnCSmWAedhkRKHaXApE'
@@ -42,17 +42,34 @@ const paymentController = {
                 });
             }
 
+            // Ensure amount is in paise (multiply by 100 if not already)
+            const amountInPaise = amount < 100 ? amount * 100 : amount;
+
             const options = {
-                amount: parseInt(amount), // Ensure amount is an integer
-                currency,
-                receipt: `order_${Date.now()}`,
+                amount: amountInPaise,
+                currency: currency,
+                receipt: `receipt_${Date.now()}`,
+                notes: {
+                    description: "Test Order"
+                }
             };
 
             console.log('Creating Razorpay order with options:', options);
             console.log('Using Razorpay key:', process.env.RAZORPAY_KEY_ID || 'rzp_test_2LKLmubQ5uu0M4');
 
             try {
-                const order = await razorpay.orders.create(options);
+                // Create order using promises
+                const order = await new Promise((resolve, reject) => {
+                    razorpay.orders.create(options, (err, order) => {
+                        if (err) {
+                            console.error('Razorpay order creation error:', err);
+                            reject(err);
+                        } else {
+                            resolve(order);
+                        }
+                    });
+                });
+
                 console.log('Order created successfully:', order);
                 res.json(order);
             } catch (razorpayError) {
@@ -60,12 +77,17 @@ const paymentController = {
                     message: razorpayError.message,
                     error: razorpayError.error,
                     statusCode: razorpayError.statusCode,
-                    details: razorpayError.error?.description
+                    details: razorpayError.error?.description,
+                    stack: razorpayError.stack
                 });
                 res.status(500).json({ 
                     error: 'Razorpay API Error',
                     details: razorpayError.error?.description || razorpayError.message,
-                    statusCode: razorpayError.statusCode
+                    statusCode: razorpayError.statusCode,
+                    debug: {
+                        message: razorpayError.message,
+                        error: razorpayError.error
+                    }
                 });
             }
         } catch (error) {
