@@ -18,33 +18,63 @@ const paymentController = {
     // Create Order
     createOrder: async (req, res) => {
         try {
-            console.log('Received create order request:', req.body);
+            // Log the incoming request
+            console.log('Create Order Request Body:', req.body);
+            console.log('Create Order Headers:', req.headers);
+
             const { amount, currency = "INR" } = req.body;
             
-            if (!amount || isNaN(amount)) {
-                console.error('Invalid amount received:', amount);
-                return res.status(400).json({ error: 'Invalid amount' });
+            // Validate amount
+            if (!amount) {
+                console.error('Amount is missing in request');
+                return res.status(400).json({ 
+                    error: 'Amount is required',
+                    receivedBody: req.body 
+                });
+            }
+
+            if (isNaN(amount) || amount <= 0) {
+                console.error('Invalid amount:', amount);
+                return res.status(400).json({ 
+                    error: 'Invalid amount. Must be a positive number',
+                    receivedAmount: amount 
+                });
             }
 
             const options = {
-                amount: amount, // Amount is already in paise from frontend
+                amount: parseInt(amount), // Ensure amount is an integer
                 currency,
                 receipt: `order_${Date.now()}`,
             };
 
             console.log('Creating Razorpay order with options:', options);
-            const order = await razorpay.orders.create(options);
-            console.log('Order created successfully:', order);
-            res.json(order);
+
+            try {
+                const order = await razorpay.orders.create(options);
+                console.log('Order created successfully:', order);
+                res.json(order);
+            } catch (razorpayError) {
+                console.error('Razorpay API Error:', {
+                    message: razorpayError.message,
+                    error: razorpayError.error,
+                    statusCode: razorpayError.statusCode
+                });
+                res.status(500).json({ 
+                    error: 'Razorpay API Error',
+                    details: razorpayError.message,
+                    statusCode: razorpayError.statusCode
+                });
+            }
         } catch (error) {
-            console.error('Detailed error in createOrder:', {
+            console.error('Unexpected error in createOrder:', {
                 message: error.message,
                 stack: error.stack,
-                response: error.response?.data
+                name: error.name
             });
             res.status(500).json({ 
                 error: 'Error creating order',
-                details: error.message 
+                details: error.message,
+                type: error.name
             });
         }
     },
@@ -52,12 +82,20 @@ const paymentController = {
     // Verify Payment
     verifyPayment: (req, res) => {
         try {
-            console.log('Received verify payment request:', req.body);
+            console.log('Verify Payment Request Body:', req.body);
+            
             const {
                 razorpay_order_id,
                 razorpay_payment_id,
                 razorpay_signature
             } = req.body;
+
+            if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+                return res.status(400).json({
+                    error: 'Missing required payment verification fields',
+                    receivedBody: req.body
+                });
+            }
 
             const sign = razorpay_order_id + "|" + razorpay_payment_id;
             const expectedSign = crypto
@@ -75,7 +113,9 @@ const paymentController = {
                 console.error('Invalid signature');
                 res.status(400).json({
                     success: false,
-                    message: "Invalid signature"
+                    message: "Invalid signature",
+                    receivedSignature: razorpay_signature,
+                    expectedSignature: expectedSign
                 });
             }
         } catch (error) {
