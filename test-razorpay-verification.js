@@ -4,8 +4,8 @@ const crypto = require('crypto');
 
 // Hardcoded Test Credentials
 const razorpay = new Razorpay({
-  key_id: 'rzp_test_2LKLmubQ5uu0M4',
-  key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
+  key_id: 'rzp_test_05BxV9TnB6Qc7g',
+  key_secret: 'J6wyqGXN02nsAAZm8w9Ivzjm'
 });
 
 // Sanitize helper: remove non-ASCII, enforce max length

@@ -3,8 +3,8 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 // Test keys - Replace these with your actual test keys from Razorpay Dashboard
-const TEST_KEY_ID = 'rzp_test_2LKLmubQ5uu0M4';
-const TEST_KEY_SECRET = 'r3WxUOnCSmWAedhkRKHaXApE';
+const TEST_KEY_ID = 'rzp_test_05BxV9TnB6Qc7g';
+const TEST_KEY_SECRET = 'J6wyqGXN02nsAAZm8w9Ivzjm';
 
 // Initialize Razorpay
 const razorpay = new Razorpay({

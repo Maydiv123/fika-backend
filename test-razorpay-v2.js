@@ -3,8 +3,8 @@ const Razorpay = require('razorpay');
 
 // Initialize Razorpay with hardcoded test credentials
 const razorpay = new Razorpay({
-  key_id: 'rzp_test_2LKLmubQ5uu0M4',
-  key_secret: 'r3WxUOnCSmWAedhkRKHaXApE'
+  key_id: 'rzp_test_05BxV9TnB6Qc7g',
+  key_secret: 'J6wyqGXN02nsAAZm8w9Ivzjm'
 });
 
 // Universal error logger with context
