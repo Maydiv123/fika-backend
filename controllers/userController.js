@@ -1,9 +1,10 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const otpStore = require('../utils/otpStore');
 
 // Get all users
 const getAllUsers = (req, res) => {
-    const query = 'SELECT * FROM users';
+    const query = 'SELECT id, firstName, lastName, email, gender, dateOfBirth, contactNumber, created_at FROM users';
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching users:', err);
@@ -204,11 +205,52 @@ const loginUser = (req, res) => {
     });
 };
 
+// Update password with OTP verification
+const updatePassword = async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required.' });
+    }
+    // Check OTP
+    if (!otpStore[email] || otpStore[email] !== otp) {
+        return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+    }
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Update password in DB
+    const query = 'UPDATE users SET password = ? WHERE email = ?';
+    db.query(query, [hashedPassword, email], (err, result) => {
+        if (err) {
+            console.error('Error updating password:', err);
+            return res.status(500).json({ success: false, message: 'Failed to update password.' });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+        // Remove OTP after use
+        delete otpStore[email];
+        res.json({ success: true, message: 'Password updated successfully.' });
+    });
+};
+
+const verifyOtp = (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+        return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
+    }
+    if (!otpStore[email] || otpStore[email] !== otp) {
+        return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+    }
+    res.json({ success: true, message: 'OTP verified.' });
+};
+
 module.exports = {
     getAllUsers,
     createUser,
     getUserById,
     updateUser,
     deleteUser,
-    loginUser
+    loginUser,
+    updatePassword,
+    verifyOtp
 }; 

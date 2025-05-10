@@ -51,7 +51,7 @@ const reviewController = {
 
                 // Update product rating and review count
                 const updateProductQuery = `
-                    UPDATE products p
+                    UPDATE allproducts p
                     SET 
                         rating = (
                             SELECT AVG(rating) 
@@ -116,7 +116,7 @@ const reviewController = {
 
                 // Update product rating
                 const updateProductQuery = `
-                    UPDATE products p
+                    UPDATE allproducts p
                     SET 
                         rating = (
                             SELECT AVG(rating) 
@@ -167,7 +167,7 @@ const reviewController = {
 
                 // Update product rating and review count
                 const updateProductQuery = `
-                    UPDATE products p
+                    UPDATE allproducts p
                     SET 
                         rating = COALESCE(
                             (SELECT AVG(rating) FROM reviews WHERE product_id = ?),

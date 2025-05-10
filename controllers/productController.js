@@ -3,7 +3,7 @@ const db = require('../config/db');
 const productController = {
     // Get all products
     getAllProducts: (req, res) => {
-        const query = 'SELECT * FROM products';
+        const query = 'SELECT * FROM allproducts';
         
         db.query(query, (err, results) => {
             if (err) {
@@ -16,8 +16,7 @@ const productController = {
 
     // Get single product by ID
     getProductById: (req, res) => {
-        // Get product details
-        const productQuery = 'SELECT * FROM products WHERE id = ?';
+        const productQuery = 'SELECT * FROM allproducts WHERE id = ?';
         
         db.query(productQuery, [req.params.id], (err, productResults) => {
             if (err) {
@@ -54,40 +53,45 @@ const productController = {
     // Create a new product
     createProduct: (req, res) => {
         const {
-            name,
-            category,
-            price,
             image,
-            isNew,
-            discount,
-            description,
-            details,
-            sizes,
-            colors,
+            category,
+            sub_category,
+            product_code,
+            color,
+            product_name,
+            product_description,
             material,
-            care
+            product_details,
+            dimension,
+            care_instructions,
+            cost_price,
+            inventory,
+            mrp
         } = req.body;
 
         const query = `
-            INSERT INTO products 
-            (name, category, price, image, isNew, discount, description, details, 
-            sizes, colors, material, care) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO allproducts 
+            (image, category, sub_category, product_code, color, product_name, 
+            product_description, material, product_details, dimension, 
+            care_instructions, cost_price, inventory, mrp) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
-            name,
-            category,
-            price,
             image,
-            isNew || false,
-            discount || 0,
-            description,
-            details,
-            JSON.stringify(sizes),
-            JSON.stringify(colors),
+            category,
+            sub_category,
+            product_code,
+            color,
+            product_name,
+            product_description,
             material,
-            care
+            product_details,
+            dimension,
+            care_instructions,
+            cost_price,
+            inventory,
+            mrp
         ];
 
         db.query(query, values, (err, result) => {
@@ -105,22 +109,24 @@ const productController = {
     // Update a product
     updateProduct: (req, res) => {
         const {
-            name,
-            category,
-            price,
             image,
-            isNew,
-            discount,
-            description,
-            details,
-            sizes,
-            colors,
+            category,
+            sub_category,
+            product_code,
+            color,
+            product_name,
+            product_description,
             material,
-            care
+            product_details,
+            dimension,
+            care_instructions,
+            cost_price,
+            inventory,
+            mrp
         } = req.body;
 
         // First check if product exists
-        db.query('SELECT * FROM products WHERE id = ?', [req.params.id], (err, results) => {
+        db.query('SELECT * FROM allproducts WHERE id = ?', [req.params.id], (err, results) => {
             if (err) {
                 console.error('Error checking product:', err);
                 return res.status(500).json({ error: 'Error updating product' });
@@ -132,35 +138,39 @@ const productController = {
             const currentProduct = results[0];
             
             const query = `
-                UPDATE products 
-                SET name = ?, 
+                UPDATE allproducts 
+                SET image = ?, 
                     category = ?, 
-                    price = ?, 
-                    image = ?,
-                    isNew = ?,
-                    discount = ?,
-                    description = ?,
-                    details = ?,
-                    sizes = ?,
-                    colors = ?,
+                    sub_category = ?, 
+                    product_code = ?,
+                    color = ?,
+                    product_name = ?,
+                    product_description = ?,
                     material = ?,
-                    care = ?
+                    product_details = ?,
+                    dimension = ?,
+                    care_instructions = ?,
+                    cost_price = ?,
+                    inventory = ?,
+                    mrp = ?
                 WHERE id = ?
             `;
 
             const values = [
-                name || currentProduct.name,
-                category || currentProduct.category,
-                price || currentProduct.price,
                 image || currentProduct.image,
-                isNew !== undefined ? isNew : currentProduct.isNew,
-                discount !== undefined ? discount : currentProduct.discount,
-                description || currentProduct.description,
-                details || currentProduct.details,
-                sizes ? JSON.stringify(sizes) : currentProduct.sizes,
-                colors ? JSON.stringify(colors) : currentProduct.colors,
+                category || currentProduct.category,
+                sub_category || currentProduct.sub_category,
+                product_code || currentProduct.product_code,
+                color || currentProduct.color,
+                product_name || currentProduct.product_name,
+                product_description || currentProduct.product_description,
                 material || currentProduct.material,
-                care || currentProduct.care,
+                product_details || currentProduct.product_details,
+                dimension || currentProduct.dimension,
+                care_instructions || currentProduct.care_instructions,
+                cost_price || currentProduct.cost_price,
+                inventory || currentProduct.inventory,
+                mrp || currentProduct.mrp,
                 req.params.id
             ];
 
@@ -176,7 +186,7 @@ const productController = {
 
     // Delete a product
     deleteProduct: (req, res) => {
-        const query = 'DELETE FROM products WHERE id = ?';
+        const query = 'DELETE FROM allproducts WHERE id = ?';
         
         db.query(query, [req.params.id], (err, result) => {
             if (err) {
@@ -187,6 +197,52 @@ const productController = {
                 return res.status(404).json({ error: 'Product not found' });
             }
             res.json({ message: 'Product deleted successfully' });
+        });
+    },
+
+    // Get products by category
+    getProductsByCategory: (req, res) => {
+        const query = 'SELECT * FROM allproducts WHERE category = ?';
+        
+        db.query(query, [req.params.category], (err, results) => {
+            if (err) {
+                console.error('Error fetching products by category:', err);
+                return res.status(500).json({ error: 'Error fetching products' });
+            }
+            res.json(results);
+        });
+    },
+
+    // Get products by sub-category
+    getProductsBySubCategory: (req, res) => {
+        const query = 'SELECT * FROM allproducts WHERE sub_category = ?';
+        
+        db.query(query, [req.params.subCategory], (err, results) => {
+            if (err) {
+                console.error('Error fetching products by sub-category:', err);
+                return res.status(500).json({ error: 'Error fetching products' });
+            }
+            res.json(results);
+        });
+    },
+
+    // Search products
+    searchProducts: (req, res) => {
+        const searchTerm = `%${req.query.q}%`;
+        const query = `
+            SELECT * FROM allproducts 
+            WHERE product_name LIKE ? 
+            OR product_description LIKE ? 
+            OR category LIKE ? 
+            OR sub_category LIKE ?
+        `;
+        
+        db.query(query, [searchTerm, searchTerm, searchTerm, searchTerm], (err, results) => {
+            if (err) {
+                console.error('Error searching products:', err);
+                return res.status(500).json({ error: 'Error searching products' });
+            }
+            res.json(results);
         });
     }
 };
