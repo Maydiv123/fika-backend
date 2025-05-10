@@ -90,13 +90,13 @@ io.on('connection', (socket) => {
   });
 });
 
-// Database connection
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to database:', err);
-        return;
-    }
-    console.log('Connected to MySQL database');
+// Test database connection
+db.query('SELECT 1', (err, results) => {
+  if (err) {
+    console.error('Error connecting to database:', err);
+    return;
+  }
+  console.log('Connected to MySQL database');
 });
 
 // Routes

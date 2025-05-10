@@ -2,27 +2,23 @@ const db = require('../config/db');
 
 const productController = {
     // Get all products
-    getAllProducts: (req, res) => {
-        const query = 'SELECT * FROM allproducts';
-        
-        db.query(query, (err, results) => {
-            if (err) {
-                console.error('Error fetching products:', err);
-                return res.status(500).json({ error: 'Error fetching products' });
-            }
+    getAllProducts: async (req, res) => {
+        try {
+            const query = 'SELECT * FROM allproducts';
+            const [results] = await db.promise.query(query);
             res.json(results);
-        });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            res.status(500).json({ error: 'Error fetching products' });
+        }
     },
 
     // Get single product by ID
-    getProductById: (req, res) => {
-        const productQuery = 'SELECT * FROM allproducts WHERE id = ?';
-        
-        db.query(productQuery, [req.params.id], (err, productResults) => {
-            if (err) {
-                console.error('Error fetching product:', err);
-                return res.status(500).json({ error: 'Error fetching product' });
-            }
+    getProductById: async (req, res) => {
+        try {
+            const productQuery = 'SELECT * FROM allproducts WHERE id = ?';
+            const [productResults] = await db.promise.query(productQuery, [req.params.id]);
+            
             if (productResults.length === 0) {
                 return res.status(404).json({ error: 'Product not found' });
             }
@@ -36,106 +32,106 @@ const productController = {
                 ORDER BY r.created_at DESC
             `;
 
-            db.query(reviewsQuery, [req.params.id], (reviewErr, reviewResults) => {
-                if (reviewErr) {
-                    console.error('Error fetching reviews:', reviewErr);
-                    return res.status(500).json({ error: 'Error fetching reviews' });
-                }
+            const [reviewResults] = await db.promise.query(reviewsQuery, [req.params.id]);
 
-                const product = productResults[0];
-                product.reviews = reviewResults;
+            const product = productResults[0];
+            product.reviews = reviewResults;
 
-                res.json(product);
-            });
-        });
+            res.json(product);
+        } catch (err) {
+            console.error('Error fetching product:', err);
+            res.status(500).json({ error: 'Error fetching product details' });
+        }
     },
 
     // Create a new product
-    createProduct: (req, res) => {
-        const {
-            image,
-            category,
-            sub_category,
-            product_code,
-            color,
-            product_name,
-            product_description,
-            material,
-            product_details,
-            dimension,
-            care_instructions,
-            cost_price,
-            inventory,
-            mrp
-        } = req.body;
+    createProduct: async (req, res) => {
+        try {
+            const {
+                image,
+                category,
+                sub_category,
+                product_code,
+                color,
+                product_name,
+                product_description,
+                material,
+                product_details,
+                dimension,
+                care_instructions,
+                cost_price,
+                inventory,
+                mrp
+            } = req.body;
 
-        const query = `
-            INSERT INTO allproducts 
-            (image, category, sub_category, product_code, color, product_name, 
-            product_description, material, product_details, dimension, 
-            care_instructions, cost_price, inventory, mrp) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+            const query = `
+                INSERT INTO allproducts 
+                (image, category, sub_category, product_code, color, product_name, 
+                product_description, material, product_details, dimension, 
+                care_instructions, cost_price, inventory, mrp) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
 
-        const values = [
-            image,
-            category,
-            sub_category,
-            product_code,
-            color,
-            product_name,
-            product_description,
-            material,
-            product_details,
-            dimension,
-            care_instructions,
-            cost_price,
-            inventory,
-            mrp
-        ];
+            const values = [
+                image,
+                category,
+                sub_category,
+                product_code,
+                color,
+                product_name,
+                product_description,
+                material,
+                product_details,
+                dimension,
+                care_instructions,
+                cost_price,
+                inventory,
+                mrp
+            ];
 
-        db.query(query, values, (err, result) => {
-            if (err) {
-                console.error('Error creating product:', err);
-                return res.status(500).json({ error: 'Error creating product' });
-            }
+            const [result] = await db.promise.query(query, values);
+            
             res.status(201).json({
                 message: 'Product created successfully',
                 productId: result.insertId
             });
-        });
+        } catch (err) {
+            console.error('Error creating product:', err);
+            res.status(500).json({ error: 'Error creating product' });
+        }
     },
 
     // Update a product
-    updateProduct: (req, res) => {
-        const {
-            image,
-            category,
-            sub_category,
-            product_code,
-            color,
-            product_name,
-            product_description,
-            material,
-            product_details,
-            dimension,
-            care_instructions,
-            cost_price,
-            inventory,
-            mrp
-        } = req.body;
+    updateProduct: async (req, res) => {
+        try {
+            const {
+                image,
+                category,
+                sub_category,
+                product_code,
+                color,
+                product_name,
+                product_description,
+                material,
+                product_details,
+                dimension,
+                care_instructions,
+                cost_price,
+                inventory,
+                mrp
+            } = req.body;
 
-        // First check if product exists
-        db.query('SELECT * FROM allproducts WHERE id = ?', [req.params.id], (err, results) => {
-            if (err) {
-                console.error('Error checking product:', err);
-                return res.status(500).json({ error: 'Error updating product' });
-            }
-            if (results.length === 0) {
+            // First check if product exists
+            const [existingProducts] = await db.promise.query(
+                'SELECT * FROM allproducts WHERE id = ?', 
+                [req.params.id]
+            );
+            
+            if (existingProducts.length === 0) {
                 return res.status(404).json({ error: 'Product not found' });
             }
 
-            const currentProduct = results[0];
+            const currentProduct = existingProducts[0];
             
             const query = `
                 UPDATE allproducts 
@@ -174,30 +170,30 @@ const productController = {
                 req.params.id
             ];
 
-            db.query(query, values, (updateErr) => {
-                if (updateErr) {
-                    console.error('Error updating product:', updateErr);
-                    return res.status(500).json({ error: 'Error updating product' });
-                }
-                res.json({ message: 'Product updated successfully' });
-            });
-        });
+            await db.promise.query(query, values);
+            res.json({ message: 'Product updated successfully' });
+        } catch (err) {
+            console.error('Error updating product:', err);
+            res.status(500).json({ error: 'Error updating product' });
+        }
     },
 
     // Delete a product
-    deleteProduct: (req, res) => {
-        const query = 'DELETE FROM allproducts WHERE id = ?';
-        
-        db.query(query, [req.params.id], (err, result) => {
-            if (err) {
-                console.error('Error deleting product:', err);
-                return res.status(500).json({ error: 'Error deleting product' });
-            }
+    deleteProduct: async (req, res) => {
+        try {
+            const query = 'DELETE FROM allproducts WHERE id = ?';
+            
+            const [result] = await db.promise.query(query, [req.params.id]);
+            
             if (result.affectedRows === 0) {
                 return res.status(404).json({ error: 'Product not found' });
             }
+            
             res.json({ message: 'Product deleted successfully' });
-        });
+        } catch (err) {
+            console.error('Error deleting product:', err);
+            res.status(500).json({ error: 'Error deleting product' });
+        }
     },
 
     // Get products by category

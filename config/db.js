@@ -3,7 +3,8 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const db = mysql.createConnection({
+// Create a connection pool instead of a single connection
+const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -13,8 +14,11 @@ const db = mysql.createConnection({
     queueLimit: 0
 });
 
+// Get a promise-based interface for the pool
+const promisePool = pool.promise();
+
 // Handle connection errors
-db.on('error', (err) => {
+pool.on('error', (err) => {
     console.error('Database error:', err);
     if (err.code === 'PROTOCOL_CONNECTION_LOST') {
         console.error('Database connection was closed.');
@@ -27,4 +31,18 @@ db.on('error', (err) => {
     }
 });
 
-module.exports = db; 
+// Export both the callback and promise pool interfaces
+module.exports = {
+    // For callback-style code (legacy)
+    query: (sql, values, callback) => {
+        return pool.query(sql, values, callback);
+    },
+    execute: (sql, values, callback) => {
+        return pool.execute(sql, values, callback);
+    },
+    connect: (callback) => {
+        return pool.getConnection(callback);
+    },
+    // For promise-style code (modern)
+    promise: promisePool
+}; 

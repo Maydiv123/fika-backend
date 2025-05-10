@@ -3,7 +3,7 @@ const db = require('../config/db');
 // Products Management
 const getAllProducts = async (req, res) => {
     try {
-        const [products] = await db.query(`
+        const [products] = await db.promise.query(`
             SELECT p.*, 
                    COUNT(DISTINCT w.user_id) as wishlist_count,
                    GROUP_CONCAT(DISTINCT u.name) as wishlisted_by
@@ -21,7 +21,7 @@ const getAllProducts = async (req, res) => {
 const createProduct = async (req, res) => {
     const { name, category, price, stock, status } = req.body;
     try {
-        const [result] = await db.query(
+        const [result] = await db.promise.query(
             'INSERT INTO products (name, category, price, stock, status) VALUES (?, ?, ?, ?, ?)',
             [name, category, price, stock, status]
         );
@@ -35,7 +35,7 @@ const updateProduct = async (req, res) => {
     const { id } = req.params;
     const { name, category, price, stock, status } = req.body;
     try {
-        await db.query(
+        await db.promise.query(
             'UPDATE products SET name = ?, category = ?, price = ?, stock = ?, status = ? WHERE id = ?',
             [name, category, price, stock, status, id]
         );
@@ -48,7 +48,7 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
     const { id } = req.params;
     try {
-        await db.query('DELETE FROM products WHERE id = ?', [id]);
+        await db.promise.query('DELETE FROM products WHERE id = ?', [id]);
         res.json({ message: 'Product deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -58,7 +58,7 @@ const deleteProduct = async (req, res) => {
 // Users Management
 const getAllUsers = async (req, res) => {
     try {
-        const [users] = await db.query(`
+        const [users] = await db.promise.query(`
             SELECT 
                 id,
                 CONCAT(firstName, ' ', lastName) as name,
@@ -87,7 +87,7 @@ const updateUser = async (req, res) => {
         const [firstName, ...lastNameParts] = name.split(' ');
         const lastName = lastNameParts.join(' ');
 
-        await db.query(
+        await db.promise.query(
             'UPDATE users SET firstName = ?, lastName = ?, email = ?, role = ?, status = ? WHERE id = ?',
             [firstName, lastName, email, role, status, id]
         );
@@ -101,7 +101,7 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     const { id } = req.params;
     try {
-        await db.query('DELETE FROM users WHERE id = ?', [id]);
+        await db.promise.query('DELETE FROM users WHERE id = ?', [id]);
         res.json({ message: 'User deleted successfully' });
     } catch (error) {
         console.error('Error deleting user:', error);
@@ -112,7 +112,7 @@ const deleteUser = async (req, res) => {
 // Orders Management
 const getAllOrders = async (req, res) => {
     try {
-        const [orders] = await db.query(`
+        const [orders] = await db.promise.query(`
             SELECT o.*, u.name as customer_name, u.email as customer_email
             FROM orders o
             JOIN users u ON o.user_id = u.id
@@ -128,7 +128,7 @@ const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
-        await db.query('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+        await db.promise.query('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
         res.json({ id, status });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -138,7 +138,7 @@ const updateOrderStatus = async (req, res) => {
 // Categories Management
 const getAllCategories = async (req, res) => {
     try {
-        const [categories] = await db.query('SELECT * FROM categories');
+        const [categories] = await db.promise.query('SELECT * FROM categories');
         res.json(categories);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -148,7 +148,7 @@ const getAllCategories = async (req, res) => {
 const createCategory = async (req, res) => {
     const { name, description } = req.body;
     try {
-        const [result] = await db.query(
+        const [result] = await db.promise.query(
             'INSERT INTO categories (name, description) VALUES (?, ?)',
             [name, description]
         );
@@ -162,7 +162,7 @@ const updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name, description } = req.body;
     try {
-        await db.query(
+        await db.promise.query(
             'UPDATE categories SET name = ?, description = ? WHERE id = ?',
             [name, description, id]
         );
@@ -175,7 +175,7 @@ const updateCategory = async (req, res) => {
 const deleteCategory = async (req, res) => {
     const { id } = req.params;
     try {
-        await db.query('DELETE FROM categories WHERE id = ?', [id]);
+        await db.promise.query('DELETE FROM categories WHERE id = ?', [id]);
         res.json({ message: 'Category deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -185,7 +185,7 @@ const deleteCategory = async (req, res) => {
 // Analytics
 const getDashboardOverview = async (req, res) => {
     try {
-        const [totalSales] = await db.query(`
+        const [totalSales] = await db.promise.query(`
             SELECT 
                 COUNT(*) as total_orders,
                 SUM(total_amount) as total_revenue,
@@ -194,14 +194,14 @@ const getDashboardOverview = async (req, res) => {
             WHERE status = 'completed'
         `);
 
-        const [userStats] = await db.query(`
+        const [userStats] = await db.promise.query(`
             SELECT 
                 COUNT(*) as total_users,
                 COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as new_users
             FROM users
         `);
 
-        const [productStats] = await db.query(`
+        const [productStats] = await db.promise.query(`
             SELECT 
                 COUNT(*) as total_products,
                 SUM(stock) as total_stock
@@ -220,7 +220,7 @@ const getDashboardOverview = async (req, res) => {
 
 const getSalesAnalytics = async (req, res) => {
     try {
-        const [salesData] = await db.query(`
+        const [salesData] = await db.promise.query(`
             SELECT 
                 DATE(created_at) as date,
                 COUNT(*) as order_count,
@@ -239,7 +239,7 @@ const getSalesAnalytics = async (req, res) => {
 
 const getUserAnalytics = async (req, res) => {
     try {
-        const [userData] = await db.query(`
+        const [userData] = await db.promise.query(`
             SELECT 
                 DATE(created_at) as date,
                 COUNT(*) as new_users
