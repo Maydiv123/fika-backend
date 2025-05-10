@@ -17,6 +17,7 @@ const blogNewsletterRoutes = require('./routes/blogNewsletterRoutes');
 const productRoutes = require('./routes/productRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -109,6 +110,8 @@ app.use('/api/email', emailRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 // Basic route
 app.get('/', (req, res) => {
